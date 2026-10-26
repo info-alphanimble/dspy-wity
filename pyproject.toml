@@ -1,6 +1,6 @@
 [project]
 name = "dspy-wity"
-version = "0.1.0"
+version = "0.2.0"
 description = "DSPy integration for Wity, the typed-decision API"
 readme = "README.md"
 license = "Apache-2.0"
@@ -21,7 +21,7 @@ classifiers = [
 ]
 dependencies = [
     "dspy>=3.4.0,<4",
-    "wity-sdk>=0.1.1,<0.2",
+    "wity-sdk>=0.2.0,<0.3",
 ]
 
 [project.urls]

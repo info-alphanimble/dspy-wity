@@ -4,6 +4,8 @@ Use [Wity](https://wity.alphanimble.com), the typed-decision API, in DSPy. Write
 
 It's one class, `Wity`, that plugs in where DSPy expects an LM. It works with DSPy's own decision types (`Noul`, `Choice`, `Score`) and its `ReAnchor` optimizer.
 
+For agents, `wity_tools()` adds Wity's split and extract as tools.
+
 ## Install
 
 ```sh
@@ -89,6 +91,31 @@ Wity answers questions with fixed options. It doesn't write text and gives one a
 - **`dspy.BestOfN`** and **`dspy.Refine`** pick from several sampled answers. Wity doesn't sample, so they raise an error. Read the probabilities instead.
 - **`dspy.streamify`** isn't supported for decisions.
 - **Optimizers:** `ReAnchor` keeps a predictor's `set_lm(Wity())`. `LabeledFewShot` and `BootstrapFewShot` start from a fresh copy of your program, which drops it, as with any LM. Set Wity for the whole run instead, with `dspy.configure(lm=Wity())` or `with dspy.context(lm=Wity()):`.
+
+## Split and extract tools
+
+`wity_tools()` gives an agent two more tools. Your agent runs on any text LLM; Wity does the reading:
+
+- `wity_split(text, split)` cuts a document into whole items, like emails in a thread or clauses in a contract. `split` says what one item is in plain words, like `"one item per email"`. Each item comes back exactly as written.
+- `wity_extract(text, fields)` pulls named fields out of a document, like `{"party": "Who signs the contract"}`. Each field comes back as a list of values, as written, or `[]` when there are none.
+
+```python
+import dspy
+from dspy_wity import wity_tools
+
+class ReadThread(dspy.Signature):
+    """Say who wrote the emails in a thread, and what each one asks for."""
+
+    thread: str = dspy.InputField()
+    summary: str = dspy.OutputField()
+
+agent = dspy.ReAct(ReadThread, tools=[*wity_tools(), other_tool])
+
+with dspy.context(lm=dspy.LM("openai/gpt-4o-mini")):
+    result = agent(thread=thread)
+```
+
+The agent's own LLM can't be `Wity`: ReAct needs an LLM that writes text. Both tools take the same `api_key`, `base_url`, `timeout`, `max_retries` and `http_client` options as `Wity`. A document can be up to 60,000 characters, and the tools wait at least two minutes before timing out. If a call fails, the tool raises the `wity-sdk` error and ReAct shows it to the agent.
 
 ## Tuning when an answer counts
 
@@ -239,6 +266,10 @@ Error messages and logs never include your state or your key.
 **Cache.** Answers go in DSPy's cache, keyed by the question, the inputs and the options. The same call again comes from the cache, with no request and no usage. Turn it off with `Wity(cache=False)`.
 
 **History and usage.** `lm.inspect_history()` shows the last calls, with Wity's full answers. With `dspy.configure(track_usage=True)`, `res.get_lm_usage()` counts Wity's input tokens under `wity-1`.
+
+## Update notice
+
+When code that uses `dspy-wity` runs at a terminal, it tells you on stderr when a newer version is out, at most once a day. It asks PyPI at most once a day, in the background, so nothing waits for it. It stays quiet in CI, when output is piped, and on servers. Set `WITY_NO_UPDATE_CHECK=1` to turn it off. The same variable turns it off in every Wity package.
 
 ## Examples
 

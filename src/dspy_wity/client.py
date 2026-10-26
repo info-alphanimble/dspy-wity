@@ -17,6 +17,8 @@ from dspy.dsp.utils.settings import settings
 from dspy.utils.callback import BaseCallback, with_callbacks
 from wity import Reasoning, SystemOneResponse
 
+from ._update_notice import show_update_notice_once
+
 MODEL = "wity-1"
 
 # What DSPy reads from each answer. The rest (reasoning details, legend) stays in history.
@@ -78,8 +80,10 @@ class Wity(BaseLM):  # type: ignore[misc]  # dspy ships no type hints
             "timeout": timeout,
             "max_retries": max_retries,
         }
+        hide_sdk_notice()
         # Made here, so a missing key or a bad address fails now, not at the first call.
         self._client = wity.WityClient(**self._options, http_client=http_client)
+        show_update_notice_once("dspy-wity", "pip install -U dspy-wity")
         self.base_url = self._client.base_url
         self.timeout = timeout
         self.max_retries = max_retries
@@ -292,3 +296,12 @@ async def _acall(self: Any, lm: Any, *args: Any, **kwargs: Any) -> Any:
 
 DecisionAdapter.__call__ = _call
 DecisionAdapter.acall = _acall
+
+
+def hide_sdk_notice() -> None:
+    """Keep wity-sdk's own notice quiet. It says to upgrade wity-sdk alone, which could pass the version we pin."""
+    try:
+        from wity._update_notice import _shown  # type: ignore[import-not-found,unused-ignore]  # wity-sdk 0.2.1+
+    except ImportError:
+        return
+    _shown.add("wity-sdk")

@@ -1,4 +1,4 @@
-"""Real calls to Wity. Skipped unless WITY_LIVE=1. 8 calls, costing a fraction of a cent.
+"""Real calls to Wity. Skipped unless WITY_LIVE=1. 10 calls, costing a fraction of a cent.
 
 Needs WITY_API_KEY. See CONTRIBUTING.md for how to run them.
 """
@@ -11,7 +11,7 @@ import pytest
 import wity
 from dspy.experimental import Noul, ReAnchor
 
-from dspy_wity import Wity
+from dspy_wity import Wity, wity_tools
 
 from .test_client import TICKET, Triage
 
@@ -92,3 +92,15 @@ def test_reanchor() -> None:
     optimizer = ReAnchor(metric, num_threads=1)
     optimizer.compile(predict, trainset=trainset)
     assert optimizer.report["train_score"] == 1.0
+
+
+THREAD = "From: dana@example.com\nSeal test failed.\n\nFrom: marcus@example.com\nRerun it on 9 October 2025."
+
+
+def test_split_and_extract_tools() -> None:
+    split, extract = wity_tools(api_key=KEY, base_url=BASE_URL)
+    assert len(split(text=THREAD, split="one item per email")) == 2
+    senders = extract(text=THREAD, fields={"sender": "The email address each email is from"})["sender"]
+    # Extract can differ between runs, so check the wiring, not every value.
+    assert "dana@example.com" in senders
+    assert all(sender in THREAD for sender in senders)

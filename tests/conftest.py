@@ -12,7 +12,7 @@ import dspy
 import httpx
 import pytest
 
-from dspy_wity import Wity
+from dspy_wity import Wity, wity_tools
 
 TEST_KEY = "wity_test_secret_1234567890"
 """A made-up key. Tests check that it never leaks."""
@@ -93,6 +93,12 @@ class FakeWity:
             http_async_client=httpx.AsyncClient(transport=transport),
             **options,
         )
+
+    def tools(self, **options: Any) -> list[dspy.Tool]:
+        """``wity_tools`` wired to this fake server. No retries unless asked for."""
+        options.setdefault("api_key", TEST_KEY)
+        options.setdefault("max_retries", 0)
+        return wity_tools(http_client=httpx.Client(transport=httpx.MockTransport(self._handle)), **options)
 
 
 @pytest.fixture
